@@ -182,10 +182,17 @@ You can create your API Key here
  # Updates & Bugfixes
 
 
-# 0.9
-- Version 0.9 restores non-interactive CLI usage for username downloads. Usernames can again be passed directly as positional arguments.
--  A new --version flag prints the current script version without starting the interactive prompt.
+# 0.9 Improvements
 
+**Restored CLI Username Support (Issue #36)**
+- Usernames can again be passed directly as positional command-line arguments, e.g. `python civitAI_Model_downloader.py username1 username2 --download-type Lora`.
+
+**Base Model Filter (Issue #37)**
+- Added `--base-model` to download only model versions to reducing bandwidth for users who only want bases such as `SDXL 1.0`, `Flux`, or `Illustrious`.
+- Matching is case-insensitive and supports partial names, so `--base-model sdxl` matches `SDXL 1.0`.
+  
+**Version Flag**
+- Added `--version` so users can confirm the script version without starting the interactive prompt.
 
 # 0.8 Improvements
 
