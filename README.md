@@ -63,7 +63,7 @@ model_downloads/
     └── Other/
 ```
 
-# How to  use
+# How to use
 ```
 install Python3
 ```
@@ -73,54 +73,47 @@ pip install -r requirements.txt
 
 **API Token Setup**
 
-The script needs a CivitAI API token. You can provide it in three ways:
+The script needs a CivitAI API token. You can provide it in three ways (checked in this order):
 1. CLI argument: `--token YOUR_TOKEN`
-2. Environment variable: `.env` file in the scripts directory  `CIVITAI_API_TOKEN=YOUR_TOKEN`
-3. If none of the above are set, the script will prompt you securely (hidden input)
+2. Environment variable: `CIVITAI_API_TOKEN=YOUR_TOKEN`
+3. `.env` file in the script directory containing `CIVITAI_API_TOKEN=YOUR_TOKEN`
+4. If none of the above are set, the script will prompt you securely (hidden input)
 
 Without a token, only public models can be downloaded. With a token, models behind the CivitAI login are also accessible.
 
+**Running the script**
 ```
 python civitAI_Model_downloader.py
+python civitAI_Model_downloader.py username1 username2 --download-type Lora
+python civitAI_Model_downloader.py --username username1,username2 --download-type All
+python civitAI_Model_downloader.py --model-ids 12345,67890 --download-type All_except_Checkpoints
+python civitAI_Model_downloader.py username1 --download-type Lora --base-model "SDXL 1.0"
+python civitAI_Model_downloader.py --version
 ```
 The script will interactively prompt for:
-- **Username(s):** Enter one or multiple usernames separated by commas
-- **Download type:** Choose from Lora, Checkpoints, Embeddings, Training_Data, Other, All, or All_except_Checkpoints  <br />
+- **Download mode:** Choose (1) By username or (2) By model ID
+- **Username(s):** (mode 1) Enter one or multiple usernames separated by commas
+- **Model ID(s):** (mode 2) Enter one or multiple model IDs separated by commas (e.g., `12345, 67890`)
+- **Download type:** Choose from Lora, Checkpoints, Embeddings, Training_Data, Other, All, or All_except_Checkpoints
 
-You  can also  give the script this 5 extra Arguments
+**Download by Model ID**
+
+You can download specific models directly by their CivitAI model ID instead of fetching all models from a username. The model ID is the number in the URL, e.g., `https://civitai.com/models/12345` has ID `12345`. Files are organized under the model creator's username automatically.
+
+**Optional CLI Arguments**
 ```
---retry_delay 
+username1 username2  Positional usernames, compatible with pre-0.8 CLI usage
+--username NAMES     Username or comma-separated usernames
+--model-ids IDS      Model ID or comma-separated model IDs
+--download-type TYPE Download type: Lora, Checkpoints, Embeddings, Training_Data, Other, All, or All_except_Checkpoints
+--base-model NAMES   Base model name or comma-separated names to include, e.g. "SDXL 1.0", "Flux", or "Illustrious"
+--version            Print the script version and exit
+--token TOKEN         CivitAI API token (prefer env var or .env file instead)
+--retry-delay N       Delay between retries in seconds (default: 10)
+--max-retries N       Maximum number of retries per file (default: 3)
+--max-threads N       Maximum concurrent downloads (default: 3, too many causes API failures)
+--output-dir DIR      Output directory (default: model_downloads)
 ```
-+ default=10,
-+ "Retry delay in seconds."
-```
---max_tries
-```
-+ default=3,
-+ "Maximum number of retries."
-```
---max_threads
-```
- + default=5, 
- + "Maximum number of concurrent threads.Too many produces API Failure."
-```
---download_type
-```
-+ Lora
-+ Checkpoints
-+ Embeddings
-+ Training_Data
-+ Other
-+ All_except_Checkpoints
-+ Default = All
-```
---token 
-```
-default=None
-```
---output-dir 
-```
-Output directory (default: model_downloads) <br />
 
 **Download Reporting**
 
@@ -132,9 +125,15 @@ Results for username <name>:
   Failed: 2
   Type filter skipped: 15
 ```
-Re-running the script will skip files that already exist and only download new or previously failed files.<br />
-Files are downloaded to a temporary `.tmp` file first and renamed when finished. <br />
-This prevents partial files seen as finished if the download is interrupted.<br />
+Re-running the script will skip files that already exist and only download new or previously failed files.
+
+**Base Model Filter**
+
+Use `--base-model` or `--base-models` to download only model versions whose CivitAI `baseModel` matches the requested text. Matching is case-insensitive and allows partial names, so `--base-model sdxl` will match `SDXL 1.0`. Multiple values can be comma-separated, for example `--base-models "SDXL 1.0,Flux,Illustrious"`.
+
+**Atomic Downloads**
+
+Files are downloaded to a temporary `.tmp` file first, then atomically renamed on completion. This prevents corrupt partial files if the download is interrupted.
 
 **Helper script** `fetch_all_models.py`
 ```
@@ -178,6 +177,7 @@ You can create your API Key here
  Scoll down until  the end and you  find this Box
 
 ![API](https://github.com/Confuzu/CivitAI-Model-grabber/assets/133601702/bc126680-62bd-41db-8211-a47b55d5fd36)
+
 
  # Updates & Bugfixes
 
