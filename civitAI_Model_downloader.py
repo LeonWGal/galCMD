@@ -642,8 +642,9 @@ def download_model_files(item_name, model_version, item, download_type, failed_d
     return item_name, counts
 
 
-def process_username(username, download_type, token, max_tries, retry_delay_val, max_threads, output_dir):
+def process_username(username, download_type, token, max_tries, retry_delay_val, max_threads, output_dir, base_model_filters=None):
     """Process a username and download the specified type of content."""
+    base_model_filters = base_model_filters or []
     # Validate username for path safety
     try:
         safe_username = sanitize_username_for_path(username)
@@ -652,6 +653,8 @@ def process_username(username, download_type, token, max_tries, retry_delay_val,
         return
 
     print(f"Processing username: {username}, Download type: {download_type}")
+    if base_model_filters:
+        print(f"Base model filter: {', '.join(base_model_filters)}")
 
     # Fetch and categorize all models (returns categorized dict directly)
     categorized_items = fetch_all_models(token, username)
@@ -682,6 +685,7 @@ def process_username(username, download_type, token, max_tries, retry_delay_val,
     total_downloaded = 0
     total_skipped = 0
     total_failed = 0
+    base_model_skipped = 0
 
     # Use paginate_api for robust pagination (circular detection, page limit, URL validation)
     for page_data in paginate_api(BASE_URL, username, headers, safe_username):
@@ -708,6 +712,11 @@ def process_username(username, download_type, token, max_tries, retry_delay_val,
                 downloaded_item_names.add(item_name)
 
                 for version in model_versions:
+                    version_base_model = version.get('baseModel')
+                    if not base_model_matches(version_base_model, base_model_filters):
+                        base_model_skipped += 1
+                        continue
+
                     future = executor.submit(
                         download_model_files, item_name, version, item,
                         download_type, failed_downloads_file, username, token, output_dir,
@@ -731,6 +740,8 @@ def process_username(username, download_type, token, max_tries, retry_delay_val,
     print(f"  Skipped (already existed): {total_skipped}")
     print(f"  Failed: {total_failed}")
     print(f"  Type filter skipped: {intentionally_skipped}")
+    if base_model_filters:
+        print(f"  Base model filter skipped versions: {base_model_skipped}")
 
 
 def fetch_model_by_id(model_id, headers):
@@ -757,8 +768,9 @@ def fetch_model_by_id(model_id, headers):
         return None, f"Invalid JSON response for model {model_id}."
 
 
-def process_model_ids(model_ids, download_type, token, max_tries, retry_delay_val, max_threads, output_dir):
+def process_model_ids(model_ids, download_type, token, max_tries, retry_delay_val, max_threads, output_dir, base_model_filters=None):
     """Fetch and download specific models by their IDs."""
+    base_model_filters = base_model_filters or []
     headers = {}
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -770,6 +782,10 @@ def process_model_ids(model_ids, download_type, token, max_tries, retry_delay_va
     total_downloaded = 0
     total_skipped = 0
     total_failed = 0
+    base_model_skipped = 0
+
+    if base_model_filters:
+        print(f"Base model filter: {', '.join(base_model_filters)}")
 
     for model_id in model_ids:
         print(f"\nFetching model {model_id}...")
@@ -795,6 +811,11 @@ def process_model_ids(model_ids, download_type, token, max_tries, retry_delay_va
         with ThreadPoolExecutor(max_workers=max_threads) as executor:
             download_futures = []
             for version in model_versions:
+                version_base_model = version.get('baseModel')
+                if not base_model_matches(version_base_model, base_model_filters):
+                    base_model_skipped += 1
+                    continue
+
                 future = executor.submit(
                     download_model_files, item_name, version, item,
                     download_type, failed_downloads_file, username, token, output_dir,
@@ -815,6 +836,8 @@ def process_model_ids(model_ids, download_type, token, max_tries, retry_delay_va
     print(f"  Downloaded: {total_downloaded}")
     print(f"  Skipped (already existed): {total_skipped}")
     print(f"  Failed: {total_failed}")
+    if base_model_filters:
+        print(f"  Base model filter skipped versions: {base_model_skipped}")
 
 
 def get_token_securely(args_token):
@@ -854,6 +877,38 @@ def split_cli_values(values):
     return result
 
 
+def normalize_filter_value(value):
+    """Normalize user-provided filter text for case-insensitive matching."""
+    return " ".join(value.strip().lower().split())
+
+
+def parse_base_model_filters(raw_values):
+    """Parse base model filters from comma-separated CLI values."""
+    filters = []
+    for value in split_cli_values(raw_values):
+        normalized = normalize_filter_value(value)
+        if normalized:
+            filters.append(normalized)
+    return filters
+
+
+def base_model_matches(base_model, base_model_filters):
+    """Return True when a model version baseModel matches any requested filter."""
+    if not base_model_filters:
+        return True
+    if not base_model or not isinstance(base_model, str):
+        return False
+
+    normalized_base_model = normalize_filter_value(base_model)
+    for filter_value in base_model_filters:
+        if filter_value in normalized_base_model:
+            return True
+        relaxed_filter = filter_value.rstrip("aeiou")
+        if len(relaxed_filter) >= 5 and relaxed_filter in normalized_base_model:
+            return True
+    return False
+
+
 def parse_model_ids(raw_values):
     """Parse comma-separated model IDs from CLI or interactive input."""
     model_ids = []
@@ -888,6 +943,7 @@ def main():
     parser.add_argument('--username', '--usernames', dest='usernames_option', help='Username or comma-separated usernames to download.')
     parser.add_argument('--model-id', '--model-ids', '--model_id', '--model_ids', dest='model_ids_option', help='Model ID or comma-separated model IDs to download.')
     parser.add_argument('--download-type', '--download_type', choices=VALID_DOWNLOAD_TYPES, help='Content type to download.')
+    parser.add_argument('--base-model', '--base-models', '--base_model', '--base_models', dest='base_models', help='Base model name or comma-separated names to include, matched case-insensitively against modelVersions[].baseModel.')
     parser.add_argument('--token', type=str, help='CivitAI API token (prefer CIVITAI_API_TOKEN env var instead)')
     parser.add_argument('--max-retries', '--max_tries', dest='max_retries', type=int, default=3, help='Maximum number of retries (default: 3)')
     parser.add_argument('--retry-delay', '--retry_delay', dest='retry_delay', type=int, default=10, help='Delay between retries in seconds (default: 10)')
@@ -898,6 +954,7 @@ def main():
 
     usernames = split_cli_values(args.usernames) + split_cli_values(args.usernames_option)
     model_ids = parse_model_ids(args.model_ids_option)
+    base_model_filters = parse_base_model_filters(args.base_models)
 
     if usernames and model_ids:
         print("Error: choose either usernames or model IDs, not both.")
@@ -907,13 +964,13 @@ def main():
 
     if model_ids:
         download_type = resolve_download_type(args.download_type)
-        process_model_ids(model_ids, download_type, token, args.max_retries, args.retry_delay, args.max_threads, args.output_dir)
+        process_model_ids(model_ids, download_type, token, args.max_retries, args.retry_delay, args.max_threads, args.output_dir, base_model_filters)
         return
 
     if usernames:
         download_type = resolve_download_type(args.download_type)
         for username in usernames:
-            process_username(username, download_type, token, args.max_retries, args.retry_delay, args.max_threads, args.output_dir)
+            process_username(username, download_type, token, args.max_retries, args.retry_delay, args.max_threads, args.output_dir, base_model_filters)
         return
 
     print("Download mode: (1) By username  (2) By model ID")
@@ -929,7 +986,7 @@ def main():
             sys.exit(1)
 
         download_type = resolve_download_type(args.download_type)
-        process_model_ids(model_ids, download_type, token, args.max_retries, args.retry_delay, args.max_threads, args.output_dir)
+        process_model_ids(model_ids, download_type, token, args.max_retries, args.retry_delay, args.max_threads, args.output_dir, base_model_filters)
     else:
         print("Enter a username (or multiple usernames separated by commas):")
         usernames_input = input("Username(s): ")
@@ -941,7 +998,7 @@ def main():
 
         download_type = resolve_download_type(args.download_type)
         for username in usernames:
-            process_username(username, download_type, token, args.max_retries, args.retry_delay, args.max_threads, args.output_dir)
+            process_username(username, download_type, token, args.max_retries, args.retry_delay, args.max_threads, args.output_dir, base_model_filters)
 
 
 if __name__ == "__main__":
