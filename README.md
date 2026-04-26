@@ -181,6 +181,12 @@ You can create your API Key here
 
  # Updates & Bugfixes
 
+
+# 0.9
+- Version 0.9 restores non-interactive CLI usage for username downloads. Usernames can again be passed directly as positional arguments.
+-  A new --version flag prints the current script version without starting the interactive prompt.
+
+
 # 0.8 Improvements
 
 - Downloads now write to a temporary `.tmp` file and  renamed on completion, prevents partial files seen as finished when the download is interrupted.
