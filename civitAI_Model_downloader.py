@@ -12,6 +12,7 @@ from fetch_all_models import fetch_all_models, paginate_api, sanitize_url_for_lo
 import sys
 
 # Constants
+VERSION = "0.9"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE_PATH = os.path.join(SCRIPT_DIR, "civitAI_Model_downloader.txt")
 OUTPUT_DIR = "model_downloads"
@@ -840,18 +841,80 @@ def get_token_securely(args_token):
         sys.exit(1)
 
 
+def split_cli_values(values):
+    """Split positional or comma-separated CLI values into a clean list."""
+    if not values:
+        return []
+    if isinstance(values, str):
+        values = [values]
+
+    result = []
+    for value in values:
+        result.extend(part.strip() for part in value.split(',') if part.strip())
+    return result
+
+
+def parse_model_ids(raw_values):
+    """Parse comma-separated model IDs from CLI or interactive input."""
+    model_ids = []
+    for raw_id in split_cli_values(raw_values):
+        if not raw_id.isdigit():
+            print(f"Invalid model ID: {raw_id} (must be a number)")
+            sys.exit(1)
+        model_ids.append(int(raw_id))
+    return model_ids
+
+
+def resolve_download_type(cli_download_type=None):
+    """Use CLI download type when present, otherwise ask interactively."""
+    if cli_download_type:
+        return cli_download_type
+
+    print(f"Select a download type from: {VALID_DOWNLOAD_TYPES}")
+    download_type = input("Download type: ").strip()
+
+    if download_type not in VALID_DOWNLOAD_TYPES:
+        print(f"Invalid download type. Must be one of: {VALID_DOWNLOAD_TYPES}")
+        sys.exit(1)
+
+    return download_type
+
+
 def main():
     """Main entry point — all argument parsing and user interaction happens here."""
     parser = argparse.ArgumentParser(description="Download models from CivitAI.")
+    parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}')
+    parser.add_argument('usernames', nargs='*', help='One or more CivitAI usernames. Restores the pre-0.8 positional username CLI.')
+    parser.add_argument('--username', '--usernames', dest='usernames_option', help='Username or comma-separated usernames to download.')
+    parser.add_argument('--model-id', '--model-ids', '--model_id', '--model_ids', dest='model_ids_option', help='Model ID or comma-separated model IDs to download.')
+    parser.add_argument('--download-type', '--download_type', choices=VALID_DOWNLOAD_TYPES, help='Content type to download.')
     parser.add_argument('--token', type=str, help='CivitAI API token (prefer CIVITAI_API_TOKEN env var instead)')
-    parser.add_argument('--max-retries', type=int, default=3, help='Maximum number of retries (default: 3)')
-    parser.add_argument('--retry-delay', type=int, default=10, help='Delay between retries in seconds (default: 10)')
-    parser.add_argument('--max-threads', type=int, default=3, help='Maximum number of concurrent downloads (default: 3)')
+    parser.add_argument('--max-retries', '--max_tries', dest='max_retries', type=int, default=3, help='Maximum number of retries (default: 3)')
+    parser.add_argument('--retry-delay', '--retry_delay', dest='retry_delay', type=int, default=10, help='Delay between retries in seconds (default: 10)')
+    parser.add_argument('--max-threads', '--max_threads', dest='max_threads', type=int, default=3, help='Maximum number of concurrent downloads (default: 3)')
     parser.add_argument('--output-dir', type=str, default=OUTPUT_DIR, help=f'Output directory (default: {OUTPUT_DIR})')
 
     args = parser.parse_args()
 
+    usernames = split_cli_values(args.usernames) + split_cli_values(args.usernames_option)
+    model_ids = parse_model_ids(args.model_ids_option)
+
+    if usernames and model_ids:
+        print("Error: choose either usernames or model IDs, not both.")
+        sys.exit(1)
+
     token = get_token_securely(args.token)
+
+    if model_ids:
+        download_type = resolve_download_type(args.download_type)
+        process_model_ids(model_ids, download_type, token, args.max_retries, args.retry_delay, args.max_threads, args.output_dir)
+        return
+
+    if usernames:
+        download_type = resolve_download_type(args.download_type)
+        for username in usernames:
+            process_username(username, download_type, token, args.max_retries, args.retry_delay, args.max_threads, args.output_dir)
+        return
 
     print("Download mode: (1) By username  (2) By model ID")
     mode = input("Select mode [1]: ").strip() or "1"
@@ -859,43 +922,24 @@ def main():
     if mode == "2":
         print("Enter model IDs separated by commas (e.g., 12345, 67890):")
         ids_input = input("Model ID(s): ")
-        raw_ids = [s.strip() for s in ids_input.split(',') if s.strip()]
-
-        model_ids = []
-        for raw_id in raw_ids:
-            if not raw_id.isdigit():
-                print(f"Invalid model ID: {raw_id} (must be a number)")
-                sys.exit(1)
-            model_ids.append(int(raw_id))
+        model_ids = parse_model_ids(ids_input)
 
         if not model_ids:
             print("No model IDs provided. Exiting.")
             sys.exit(1)
 
-        print(f"Select a download type from: {VALID_DOWNLOAD_TYPES}")
-        download_type = input("Download type: ").strip()
-
-        if download_type not in VALID_DOWNLOAD_TYPES:
-            print(f"Invalid download type. Must be one of: {VALID_DOWNLOAD_TYPES}")
-            sys.exit(1)
-
+        download_type = resolve_download_type(args.download_type)
         process_model_ids(model_ids, download_type, token, args.max_retries, args.retry_delay, args.max_threads, args.output_dir)
     else:
         print("Enter a username (or multiple usernames separated by commas):")
         usernames_input = input("Username(s): ")
-        usernames = [u.strip() for u in usernames_input.split(',') if u.strip()]
+        usernames = split_cli_values(usernames_input)
 
         if not usernames:
             print("No usernames provided. Exiting.")
             sys.exit(1)
 
-        print(f"Select a download type from: {VALID_DOWNLOAD_TYPES}")
-        download_type = input("Download type: ").strip()
-
-        if download_type not in VALID_DOWNLOAD_TYPES:
-            print(f"Invalid download type. Must be one of: {VALID_DOWNLOAD_TYPES}")
-            sys.exit(1)
-
+        download_type = resolve_download_type(args.download_type)
         for username in usernames:
             process_username(username, download_type, token, args.max_retries, args.retry_delay, args.max_threads, args.output_dir)
 
