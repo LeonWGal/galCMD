@@ -1,4 +1,4 @@
-# CivitAI Model Downloader
+# galCMD - Civitai Model Downloader
 
 A robust, multithreaded command-line tool for bulk-downloading models, images, and metadata from [CivitAI](https://civitai.com) — by username or by direct model ID.
 
@@ -32,8 +32,8 @@ Python 3.8+ is recommended (uses the walrus operator).
 ## Usage
 
 ```bash
-python civitAI_Model_downloader.py <username> [<username2> ...] [options]
-python civitAI_Model_downloader.py --model_id 12345,67890 [options]
+python galCMD.py <username> [<username2> ...] [options]
+python galCMD.py --model_id 12345,67890 [options]
 ```
 
 ### Authentication
@@ -63,19 +63,19 @@ The script needs a CivitAI API token (create one at civitai.com → Account Sett
 
 ```bash
 # Download all LoRAs from a user
-python civitAI_Model_downloader.py someartist --download_type Lora
+python galCMD.py someartist --download_type Lora
 
 # Download everything except checkpoints, from two users
-python civitAI_Model_downloader.py userA userB --exclude_type Checkpoints
+python galCMD.py userA userB --exclude_type Checkpoints
 
 # Download two specific models by ID
-python civitAI_Model_downloader.py --model_id 12345,67890
+python galCMD.py --model_id 12345,67890
 
 # Only Illustrious/Pony-based models, with more threads
-python civitAI_Model_downloader.py someartist --base_models Illustrious,Pony --max_threads 8
+python galCMD.py someartist --base_models Illustrious,Pony --max_threads 8
 
 # Full integrity re-check of an existing library
-python civitAI_Model_downloader.py someartist --deep_check
+python galCMD.py someartist --deep_check
 ```
 
 ## Output layout
@@ -111,7 +111,7 @@ Create an empty file named `.skip` inside any `username/`, `.../<model>/`, or `.
 
 ## Credits
 
-Originally based on [Confuzu's CivitAI Model Downloader](https://github.com/Confuzu). This fork has diverged significantly with its own set of reliability, integrity, and UX features.
+Originally based on [Confuzu's CivitAI Model Downloader](https://github.com/Confuzu). This fork, galCMD, has diverged significantly with its own set of reliability, integrity, and UX features, and pairs with [galCME](https://github.com/LeonWGal/galCME).
 
 ## License
 

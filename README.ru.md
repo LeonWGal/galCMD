@@ -1,4 +1,4 @@
-# CivitAI Model Downloader
+# galCMD - Civitai Model Downloader
 
 Надёжная многопоточная утилита командной строки для массовой загрузки моделей, изображений и метаданных с [CivitAI](https://civitai.com) — по имени пользователя или напрямую по ID модели.
 
@@ -32,8 +32,8 @@ pip install requests tqdm
 ## Использование
 
 ```bash
-python civitAI_Model_downloader.py <username> [<username2> ...] [опции]
-python civitAI_Model_downloader.py --model_id 12345,67890 [опции]
+python galCMD.py <username> [<username2> ...] [опции]
+python galCMD.py --model_id 12345,67890 [опции]
 ```
 
 ### Авторизация
@@ -63,19 +63,19 @@ python civitAI_Model_downloader.py --model_id 12345,67890 [опции]
 
 ```bash
 # Скачать все LoRA конкретного автора
-python civitAI_Model_downloader.py someartist --download_type Lora
+python galCMD.py someartist --download_type Lora
 
 # Скачать всё, кроме чекпоинтов, у двух пользователей
-python civitAI_Model_downloader.py userA userB --exclude_type Checkpoints
+python galCMD.py userA userB --exclude_type Checkpoints
 
 # Скачать две конкретные модели по ID
-python civitAI_Model_downloader.py --model_id 12345,67890
+python galCMD.py --model_id 12345,67890
 
 # Только модели на базе Illustrious/Pony, с увеличенным числом потоков
-python civitAI_Model_downloader.py someartist --base_models Illustrious,Pony --max_threads 8
+python galCMD.py someartist --base_models Illustrious,Pony --max_threads 8
 
 # Полная проверка целостности уже скачанной библиотеки
-python civitAI_Model_downloader.py someartist --deep_check
+python galCMD.py someartist --deep_check
 ```
 
 ## Структура выходных файлов
@@ -111,7 +111,7 @@ model_downloads/
 
 ## Благодарности
 
-Изначально основано на [CivitAI Model Downloader от Confuzu](https://github.com/Confuzu). Этот форк значительно разошёлся с оригиналом собственным набором функций по надёжности, целостности данных и удобству использования.
+Изначально основано на [CivitAI Model Downloader от Confuzu](https://github.com/Confuzu). Этот форк, galCMD, значительно разошёлся с оригиналом собственным набором функций по надёжности, целостности данных и удобству использования, и хорошо сочетается с [galCME](https://github.com/LeonWGal/galCME).
 
 ## Лицензия
 
